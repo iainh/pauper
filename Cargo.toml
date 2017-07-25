@@ -1,0 +1,9 @@
+[package]
+name = "pauper"
+version = "0.1.0"
+authors = ["Iain H. <iain@spiralpoint.org>"]
+
+[dependencies]
+clap = "2.25"
+rocket = "0.3"
+rocket_codegen  = "0.3"
