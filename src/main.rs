@@ -8,6 +8,7 @@ extern crate rocket;
 use clap::{Arg, ArgMatches};
 
 use std::io;
+use std::env;
 use std::path::{Path, PathBuf};
 
 use rocket::response::NamedFile;
@@ -17,34 +18,37 @@ fn parse_args() -> ArgMatches<'static> {
     app_from_crate!()
         .arg(Arg::with_name("DOCROOT")
             .short("d")
-            .takes_value(true)
-            .required(true))
+            .takes_value(true))
         .get_matches()
 }
 
+fn get_named_file(doc_root: &String, file: &PathBuf) -> io::Result<NamedFile> {
+    NamedFile::open(Path::new(doc_root).join(file))
+}
+
 #[get("/")]
-fn index(docroot: State<String>) -> io::Result<NamedFile> {
-    NamedFile::open(format!("{}/{}", docroot.as_str(), "index.html"))
+fn index(doc_root: State<String>) -> io::Result<NamedFile> {
+    get_named_file(&doc_root, &PathBuf::from("index.html"))
 }
 
 #[get("/<file..>")]
-fn files(file: PathBuf, docroot: State<String>) -> Option<NamedFile> {
-    NamedFile::open(Path::new(docroot.as_str()).join(file)).ok()
+fn files(file: PathBuf, doc_root: State<String>) -> Option<NamedFile> {
+    get_named_file(&doc_root, &file).ok()
 }
 
-fn rocket(docroot: &str) -> rocket::Rocket {
+fn rocket(doc_root: &str) -> rocket::Rocket {
     rocket::ignite()
-        .manage(format!("{}", docroot))
+        .manage(format!("{}", doc_root))
         .mount("/", routes![index, files])
 }
 
 fn main() {
     let args = parse_args();
 
-    let docroot = args.value_of("DOCROOT").unwrap();
+    let current_dir = env::current_dir().unwrap();
+    let cwd = current_dir.to_str().unwrap();
 
-    println!("Docroot: {}", docroot);
-
-    rocket(docroot)
+    let doc_root = args.value_of("DOCROOT").unwrap_or(cwd);
+    rocket(doc_root)
         .launch();
 }
