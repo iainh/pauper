@@ -33,7 +33,13 @@ fn index(doc_root: State<String>) -> io::Result<NamedFile> {
 
 #[get("/<file..>")]
 fn files(file: PathBuf, doc_root: State<String>) -> Option<NamedFile> {
-    get_named_file(&doc_root, &file).ok()
+    let full_path = PathBuf::from(doc_root.as_str()).join(&file);
+    let file_path = if full_path.is_dir() {
+        file.join("index.html")
+    } else {
+        file
+    };
+    get_named_file(&doc_root, &file_path).ok()
 }
 
 fn rocket(doc_root: &str) -> rocket::Rocket {
