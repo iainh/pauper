@@ -13,12 +13,21 @@ use std::path::{Path, PathBuf};
 
 use rocket::response::NamedFile;
 use rocket::State;
+use rocket::config::{Config, Environment};
 
 fn parse_args() -> ArgMatches<'static> {
     app_from_crate!()
         .arg(Arg::with_name("DOCROOT")
             .short("d")
+            .long("root")
             .takes_value(true))
+        .arg(Arg::with_name("PORT")
+            .short("p")
+            .long("port")
+            .takes_value(true))
+        .arg(Arg::with_name("VERBOSE")
+            .short("v")
+            .long("verbose"))
         .get_matches()
 }
 
@@ -42,8 +51,8 @@ fn files(file: PathBuf, doc_root: State<String>) -> Option<NamedFile> {
     get_named_file(&doc_root, &file_path).ok()
 }
 
-fn rocket(doc_root: &str) -> rocket::Rocket {
-    rocket::ignite()
+fn rocket(config: Config, logging: bool, doc_root: &str) -> rocket::Rocket {
+    rocket::custom(config, logging)
         .manage(format!("{}", doc_root))
         .mount("/", routes![index, files])
 }
@@ -55,6 +64,13 @@ fn main() {
     let cwd = current_dir.to_str().unwrap();
 
     let doc_root = args.value_of("DOCROOT").unwrap_or(cwd);
-    rocket(doc_root)
+
+    let port = args.value_of("PORT").unwrap_or("8000");
+    let logging = args.occurrences_of("VERBOSE") > 0;
+
+    let config = Config::build(Environment::Development)
+        .port(port.parse::<u16>().unwrap())
+        .finalize();
+    rocket(config.unwrap(), logging, doc_root)
         .launch();
 }
