@@ -65,12 +65,18 @@ fn main() {
 
     let doc_root = args.value_of("DOCROOT").unwrap_or(cwd);
 
-    let port = args.value_of("PORT").unwrap_or("8000");
+    let port = args.value_of("PORT").unwrap_or("8000").parse::<u16>().unwrap();
     let logging = args.occurrences_of("VERBOSE") > 0;
 
-    let config = Config::build(Environment::Development)
-        .port(port.parse::<u16>().unwrap())
-        .finalize();
-    rocket(config.unwrap(), logging, doc_root)
+    let config = match Config::build(Environment::Development)
+        .port(port).finalize() {
+        Ok(c) => c,
+        Err(_) => {
+            eprintln!("Configuration error");
+            Config::new(Environment::Development).unwrap()
+        }
+    };
+
+    rocket(config, logging, doc_root)
         .launch();
 }
